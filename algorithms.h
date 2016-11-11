@@ -8,11 +8,8 @@
 #include <cfloat>
 
 
-using namespace std;
-
 // Minimum representable floating-point number.
 #define NA FLT_MIN
-
 
 typedef struct {
     bool Delay;
@@ -23,7 +20,7 @@ typedef struct {
     int referenceSize;
     int NSeasons;
     int PermCount;
-    std::vector<string> Methods;
+    std::vector<std::string> Methods;
 } AnomalyzerConf;
 
 
@@ -36,6 +33,7 @@ typedef struct {
 typedef float (*Algorithm)(std::vector<float>, AnomalyzerConf&);
 
 typedef bool (*compare)(float, float);
+
 
 static inline bool greaterThan(float x, float y)
 {
@@ -64,13 +62,11 @@ static inline float sum(std::vector<float> x)
 }
 
 
-
     template <class T>
 int getArrayLen(T& array)
 { 
     return (sizeof(array) / sizeof(array[0]));
 }
-
 
 
     template <class T1, class T2>
@@ -107,14 +103,6 @@ void printMap(T& myMap)
 }
 
 
-    template < class T >
-void ClearVector( std::vector< T >& vt ) 
-{
-    std::vector< T > vtTemp;
-    vtTemp.swap( vt );
-}
-
-
 // Returns a value within a given window (xmin and xmax).
 static inline float cap(float x, float min, float max)
 {
@@ -124,20 +112,16 @@ static inline float cap(float x, float min, float max)
 
 extern std::unordered_map<std::string, Algorithm> Algorithms;
 
+
+float BootstrapKsTest(std::vector<float> data, AnomalyzerConf& conf);
 float MagnitudeTest(std::vector<float> data, AnomalyzerConf& conf);
 float DiffTest(std::vector<float> data, AnomalyzerConf& conf);
 float RankTest(std::vector<float> data, AnomalyzerConf& conf);
 float ReverseRankTest(std::vector<float> data, AnomalyzerConf& conf);
 float CDFTest(std::vector<float> data, AnomalyzerConf& conf);
 float FenceTest(std::vector<float> data, AnomalyzerConf& conf);
-float BootstrapKsTest(std::vector<float> data, AnomalyzerConf& conf);
 std::vector<float> split(std::vector<float> x, int start, int end);
 
 
-
-
-
-float mean(std::vector<float> array);
+float mean(const std::vector<float>& array);
 float eval(Anomalyzer& anomaly);
-
-

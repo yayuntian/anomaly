@@ -8,6 +8,7 @@
 
 #include <algorithms.h>
 
+using namespace std;
 
 void printConf(AnomalyzerConf conf) {
     cout << "Delay:" << conf.Delay << endl;
@@ -64,21 +65,19 @@ void validateConf(AnomalyzerConf& conf) {
 
 
     // validation for the fence test
-	if (exists("fence", conf.Methods)) {
+    if (exists("fence", conf.Methods)) {
         if (conf.UpperBound == conf.LowerBound) {
             cout << "Fence test included with identical bounds on the fences" << endl;
             exit(1);
-        } else {
-            if (conf.UpperBound < conf.LowerBound) {
-                printf("UpperBound (%0.2f) was lower than the LowerBound (%0.2f)\n", conf.UpperBound, conf.LowerBound);
-                exit(1);
-            }
+        } else if (conf.UpperBound < conf.LowerBound) {
+            printf("UpperBound (%0.2f) was lower than the LowerBound (%0.2f)\n", conf.UpperBound, conf.LowerBound);
+            exit(1);
         }
-	}
+    }
 
     // validation for the permutation tests
     if (exists("highrank", conf.Methods) || exists("lowrank", conf.Methods) ||
-		exists("ks", conf.Methods) || exists("diff", conf.Methods)) {
+            exists("ks", conf.Methods) || exists("diff", conf.Methods)) {
         if (conf.PermCount == 0) {
             conf.PermCount = 500;
         }
@@ -94,13 +93,11 @@ void validateConf(AnomalyzerConf& conf) {
 }
 
 
-
 Anomalyzer NewAnomalyzer(AnomalyzerConf& conf, std::vector<float> data)
 {
+    Anomalyzer anomaly;
 
     validateConf(conf);
-
-    Anomalyzer anomaly;
 
     anomaly.Conf = conf;
     anomaly.Data = data;
@@ -109,13 +106,10 @@ Anomalyzer NewAnomalyzer(AnomalyzerConf& conf, std::vector<float> data)
 }
 
 
-
-void update(Anomalyzer& anomaly, std::vector<float> data)
+void update(Anomalyzer& anomaly, std::vector<float>& data)
 {
     // add new elememnts to the vector
     anomaly.Data.insert(anomaly.Data.end(), data.begin(), data.end());
-
-    printVector(anomaly.Data);
 
     int offset = anomaly.Data.size() - (anomaly.Conf.ActiveSize + anomaly.Conf.referenceSize);
     if (offset < 0) {
@@ -123,8 +117,6 @@ void update(Anomalyzer& anomaly, std::vector<float> data)
     }
 
     anomaly.Data.erase(anomaly.Data.begin(), anomaly.Data.begin() + offset);
-
-    printVector(anomaly.Data);
 }
 
 
@@ -138,17 +130,19 @@ float push(Anomalyzer& anomaly, float data)
 }
 
 
-// Use essentially similar weights.  However, if either the magnitude
-// or fence methods have high probabilities, upweight them significantly.
+/*
+ * Use essentially similar weights.  However, if either the magnitude
+ * or fence methods have high probabilities, upweight them significantly.
+ */
 float getWeight(Anomalyzer& anomaly, string name, float prob)
 {
     float weight = 0.5;
 
     std::vector<string> dynamicWeights = {"magnitude", "fence"};
 
-    // If either the magnitude and fence methods don't have any
-    // probability to contribute, we don't want to hear about it.
-    // If they do, we upweight them substantially.
+    /* If either the magnitude and fence methods don't have any
+       probability to contribute, we don't want to hear about it.
+       If they do, we upweight them substantially.*/
 
     if (exists(name, dynamicWeights)) {
         if (prob > 0.8) {
@@ -161,7 +155,7 @@ float getWeight(Anomalyzer& anomaly, string name, float prob)
 
 
 // Mean returns the mean of the vector.
-float mean(const std::vector<float> array)
+float mean(const std::vector<float>& array)
 {
     float s = sum(array);
     float n = (float) array.size();
@@ -171,12 +165,14 @@ float mean(const std::vector<float> array)
 
 
 // Variance caclulates the variance of the vector
-float variance(std::vector<float>& x)
+float variance(const std::vector<float>& x)
 {
     float m = mean(x);
 
     int n = x.size();
-    if (n < 2) return 0.0;
+    if (n < 2) {
+        return 0.0;
+    }
 
     float ss = 0.0;
     for (float v : x) {
@@ -188,15 +184,17 @@ float variance(std::vector<float>& x)
 
 
 // Sd calculates the standard deviation of the vector
-float sd(std::vector<float>& array)
+float sd(const std::vector<float>& array)
 {
     return sqrt(variance(array));
 }
 
 
-// weightedSum returns the weighted sum of the vector.  This is really only useful in
-// calculating the weighted mean.
-float weightedSum(std::vector<float>& probs, std::vector<float>& weights)
+/*
+ * weightedSum returns the weighted sum of the vector.  This is really only useful in
+ * calculating the weighted mean.
+ */
+float weightedSum(const std::vector<float>& probs, const std::vector<float>& weights)
 {
     if (probs.size() != weights.size()) {
         cout << "Length of weights unequal to vector length" << endl;
@@ -218,20 +216,22 @@ float weightedSum(std::vector<float>& probs, std::vector<float>& weights)
 float weightedMean(std::vector<float> probs, std::vector<float> weights)
 {
     float ws = weightedSum(probs, weights);
-	float sw = sum(weights);
+    float sw = sum(weights);
 
-	// if all the weights are zero return NA
+    // if all the weights are zero return NA
     if (ws == NA || !isgreater(sw, 0.0)) {
         return NA;
     }
-	
+
     return ws / sw;
 }
 
 
-// Return the weighted average of all statistical tests
-// for anomaly detection, which yields the probability that
-// the currently observed behavior is anomalous.
+/*
+ * Return the weighted average of all statistical tests
+ * for anomaly detection, which yields the probability that
+ * the currently observed behavior is anomalous.
+ */
 float eval(Anomalyzer& anomaly)
 {
     int threshold = anomaly.Conf.referenceSize + anomaly.Conf.ActiveSize;
@@ -246,13 +246,12 @@ float eval(Anomalyzer& anomaly)
 
         float prob = cap(algorithm(anomaly.Data, anomaly.Conf), 0, 1);
         if (prob != NA) {
-            // if highrank and lowrank methods exist then only listen to
-            // the max of either
+            // if highrank and lowrank methods exist then only listen to the max of either
             if (method == "highrank" || method == "lowrank") {
-				auto it = probmap.find("rank");
-				if (it == probmap.end()) {
-					probmap["rank"] = 0;
-				}
+                auto it = probmap.find("rank");
+                if (it == probmap.end()) {
+                    probmap["rank"] = 0;
+                }
                 probmap["rank"] = std::max(probmap["rank"], prob);
             } else {
                 probmap[method] = prob;
@@ -265,7 +264,7 @@ float eval(Anomalyzer& anomaly)
         string method = it.first;
         float prob = it.second;
 
-		cout << "Method: " << method << ", Prob: " << prob << endl;
+        //cout << "Method: " << method << ", Prob: " << prob << endl;
         if (method == "magnitude" && prob < anomaly.Conf.Sensitivity) {
             return 0.0;
         }
@@ -274,46 +273,9 @@ float eval(Anomalyzer& anomaly)
         weights.push_back(getWeight(anomaly, method, prob));
     }
 
-    // ignore the error since we force the length of probs
-    // and the weights to be equal
+    /* ignore the error since we force the length 
+       of probs and the weights to be equal */
     float weighted = weightedMean(probs, weights);
 
-	return (weighted == NA) ? 0.0 : weighted;
-}
-
-
-// Get the results and weights of each test. Useful for debugging
-void evalByTest(Anomalyzer& anomaly)
-{
-    std::unordered_map<std::string, float> probmap;
-    for (auto method : anomaly.Conf.Methods) {
-
-        auto algorithm = Algorithms[method];
-        float prob = cap(algorithm(anomaly.Data, anomaly.Conf), 0, 1);
-
-        if (prob != NA) {
-            // if highrank and lowrank methods exist then only listen to
-            // the max of either
-            if (method == "highrank" || method == "lowrank") {
-                if (isnan(probmap["rank"])) {
-                    probmap["rank"] = 0;
-                }
-                probmap["rank"] = std::max(probmap["rank"], prob);
-            } else {
-                probmap[method] = prob;
-            }
-        }
-    }
-
-    std::unordered_map<std::string, float> weightmap;
-    for (auto it : probmap) {
-        string method = it.first;
-        float prob = it.second;
-
-        cout << it.first << it.second << endl;
-        weightmap[method] = getWeight(anomaly, method, prob);
-    }
-
-    printMap(probmap);
-    printMap(weightmap);
+    return (weighted == NA) ? 0.0 : weighted;
 }
