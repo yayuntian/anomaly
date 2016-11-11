@@ -64,8 +64,7 @@ void validateConf(AnomalyzerConf& conf) {
 
 
     // validation for the fence test
-    auto fence = std::find(conf.Methods.begin(), conf.Methods.end(), "fence");
-    if (fence != conf.Methods.end()) {
+	if (exists("fence", conf.Methods)) {
         if (conf.UpperBound == conf.LowerBound) {
             cout << "Fence test included with identical bounds on the fences" << endl;
             exit(1);
@@ -75,10 +74,11 @@ void validateConf(AnomalyzerConf& conf) {
                 exit(1);
             }
         }
-    }
+	}
 
     // validation for the permutation tests
-    if (exists("highrank", conf.Methods) || exists("lowrank", conf.Methods) || exists("ks", conf.Methods) || exists("diff", conf.Methods)) {
+    if (exists("highrank", conf.Methods) || exists("lowrank", conf.Methods) ||
+		exists("ks", conf.Methods) || exists("diff", conf.Methods)) {
         if (conf.PermCount == 0) {
             conf.PermCount = 500;
         }
@@ -153,8 +153,6 @@ float getWeight(Anomalyzer& anomaly, string name, float prob)
     if (exists(name, dynamicWeights)) {
         if (prob > 0.8) {
             weight = 5.0;
-        } else {
-            weight = 0.5;
         }
     }
 
@@ -220,12 +218,13 @@ float weightedSum(std::vector<float>& probs, std::vector<float>& weights)
 float weightedMean(std::vector<float> probs, std::vector<float> weights)
 {
     float ws = weightedSum(probs, weights);
+	float sw = sum(weights);
 
-    if (ws == NA) {
+	// if all the weights are zero return NA
+    if (ws == NA || !isgreater(sw, 0.0)) {
         return NA;
     }
-
-    float sw = sum(weights);
+	
     return ws / sw;
 }
 
@@ -235,7 +234,6 @@ float weightedMean(std::vector<float> probs, std::vector<float> weights)
 // the currently observed behavior is anomalous.
 float eval(Anomalyzer& anomaly)
 {
-
     int threshold = anomaly.Conf.referenceSize + anomaly.Conf.ActiveSize;
 
     if (anomaly.Conf.Delay && (int) anomaly.Data.size() < threshold) {
@@ -247,14 +245,14 @@ float eval(Anomalyzer& anomaly)
         auto algorithm = Algorithms[method];
 
         float prob = cap(algorithm(anomaly.Data, anomaly.Conf), 0, 1);
-
         if (prob != NA) {
             // if highrank and lowrank methods exist then only listen to
             // the max of either
             if (method == "highrank" || method == "lowrank") {
-                if (isnan(probmap["rank"])) {
-                    probmap["rank"] = 0;
-                }
+				auto it = probmap.find("rank");
+				if (it == probmap.end()) {
+					probmap["rank"] = 0;
+				}
                 probmap["rank"] = std::max(probmap["rank"], prob);
             } else {
                 probmap[method] = prob;
@@ -267,7 +265,7 @@ float eval(Anomalyzer& anomaly)
         string method = it.first;
         float prob = it.second;
 
-        //cout << it.first << it.second << endl;
+		cout << "Method: " << method << ", Prob: " << prob << endl;
         if (method == "magnitude" && prob < anomaly.Conf.Sensitivity) {
             return 0.0;
         }
@@ -280,15 +278,7 @@ float eval(Anomalyzer& anomaly)
     // and the weights to be equal
     float weighted = weightedMean(probs, weights);
 
-    // if all the weights are zero, then our weighted mean
-    // function attempts to divide by zero which returns a
-    // NaN. we'd like it to return 0.
-
-    if (isnan(weighted)) {
-        weighted = 0;
-    }
-
-    return weighted;
+	return (weighted == NA) ? 0.0 : weighted;
 }
 
 

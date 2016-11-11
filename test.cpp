@@ -62,24 +62,23 @@ int main()
 {
     AnomalyzerConf conf;
 
-    conf.Delay = false;
-    conf.Sensitivity = 0.2;
-    conf.UpperBound = 10;
+    conf.Delay = true;
+    conf.Sensitivity = 0.1;
+    conf.UpperBound = 5;
     conf.LowerBound = NA;
     conf.ActiveSize = 2;
     conf.NSeasons = 4;
-    conf.PermCount = 0;
+    conf.PermCount = 500;
 	// "magnitude", "diff", "highrank", "lowrank", "fence", "ks", "cdf"
     conf.Methods = {"magnitude", "diff", "highrank", "lowrank", "fence", "ks", "cdf"};
 
-	std::vector<float> data = {3.01, 3.3, 4.5, 5.2, 4.51, 4, 7.1, 3.4, 5, 4.2, 5.12, 1.34};
-
+	std::vector<float> data = {0.01, 1.3, 0.5, 0.2, 10.51, 0.31, 0.1, 0.4, 0.11, 5.2, 0.12, 0.34};
 
 #if 1
 	Anomalyzer anomaly = NewAnomalyzer(conf, data);
 	//float ret = eval(anomaly);
-
 	float ret = push(anomaly, 12);
+	
 	cout << "Anomalous Probability: " << ret << endl;
 #endif
 #if 0

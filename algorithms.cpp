@@ -37,7 +37,7 @@ std::vector<float> split(std::vector<float> x, int start, int end)
 // Return a vector slice for the active window and reference window.
 // Some tests require different minimum thresholds for sizes of reference windows.
 // This can be specified in the minRefSize parameter. If size isn't important, use -1
-std::vector<float> extractReference(std::vector<float> data,
+std::vector<float> extractReference(const std::vector<float>& data,
         int refSize, int activeSize, int minRefSize)
 {
     int n = data.size();
@@ -59,7 +59,7 @@ std::vector<float> extractReference(std::vector<float> data,
 }
 
 
-std::vector<float> extractActive(std::vector<float> data,
+std::vector<float> extractActive(const std::vector<float>& data,
         int refSize, int activeSize, int minRefSize)
 {
     int n = data.size();
@@ -80,9 +80,11 @@ std::vector<float> extractActive(std::vector<float> data,
 }
 
 
-// This is a function will sharply scale values between 0 and 1 such that
-// smaller values are weighted more towards 0. A larger base value means a
-// more horshoe type function.
+/* 
+	This is a function will sharply scale values between 0 and 1 such that
+	smaller values are weighted more towards 0. A larger base value means a
+	more horshoe type function.
+*/
 float weightExp(float x, float base)
 {
     return (pow(base, x) - 1) / (pow(base, 1) - 1);
@@ -102,13 +104,14 @@ float FenceTest(std::vector<float> data, AnomalyzerConf& conf)
         // we only care about distance from the upper bound
         distance = x / conf.UpperBound;
     } else {
-        // we care about both bounds, so measure distance
-        // from midpoint
+        // we care about both bounds, so measure distance from midpoint
         float bound = (conf.UpperBound - conf.LowerBound) / 2;
         float mid = conf.LowerBound + bound;
 
         distance = (abs(x - mid)) / bound;
     }
+
+	cout << "distance:" << distance << endl;
     return weightExp(cap(distance, 0, 1), 10);
 }
 
@@ -122,10 +125,10 @@ std::vector<float> Diff(std::vector<float>& data)
         return std::vector<float>();
     }
 
-    std::vector<float> d;
+    std::vector<float> d(n - 1);
 
     for (int i = 1; i < n; i++) {
-        d.push_back(data[i] - data[i - 1]);
+		d[i - 1] = std::abs(data[i] - data[i - 1]);
     }
 
     return d;
@@ -133,16 +136,16 @@ std::vector<float> Diff(std::vector<float>& data)
 
 
 // RelDiff returns a vector of the relative differences of the input vector
-std::vector<float> RelDiff(std::vector<float> data)
+std::vector<float> RelDiff(const std::vector<float>& data)
 {
     int n = data.size();
     if (n < 2) {
         return std::vector<float>();
     }
 
-    std::vector<float> d;
+    std::vector<float> d(n - 1);
     for (int i = 1; i < n; i++) {
-        d.push_back((data[i] - data[i - 1])/ data[i]);
+		d[i - 1] = std::abs((data[i] - data[i - 1])/ data[i]);
     }
 
     return d;
@@ -150,7 +153,7 @@ std::vector<float> RelDiff(std::vector<float> data)
 
 
 // Rank returns a vector of the ranked values of the input vector.
-std::vector<float> Rank(std::vector<float> x)
+std::vector<float> Rank(const std::vector<float>& x)
 {
     std::vector<float> y = x;
     std::sort(y.begin(), y.end());
@@ -216,15 +219,11 @@ float DiffTest(std::vector<float> data, AnomalyzerConf& conf)
 {
     // Find the differences between neighboring elements and rank those differences.
     auto x = RelDiff(data);
-    for (auto &i : x) {
-        i = std::abs(i);
-    }
 
     auto ranks = Rank(x);
 
     // The indexing runs to length-1 because after applying .Diff(), We have
     // decreased the length of out vector by 1.
-
     auto active = extractActive(ranks, conf.referenceSize - 1, conf.ActiveSize, conf.ActiveSize);
     if (active.empty()) {
         return NA;
@@ -232,20 +231,15 @@ float DiffTest(std::vector<float> data, AnomalyzerConf& conf)
 
     // Consider the sum of the ranks across the active data. This is the sum that
     // we will compare our permutations to.
-
     float activeSum = sum(active);
 
     int significant = 0;
 
     // Permute the active and reference data and compute the sums across the tail
     // (from the length of the reference data to the full length).
-
     for (int i = 0; i < conf.PermCount; i++) {
         std::random_shuffle(data.begin(), data.end());
         auto x = RelDiff(data);
-        for (auto &i : x) {
-            i = std::abs(i);
-        }
 
         auto permRanks = Rank(x);
         auto permActive = extractActive(permRanks, conf.referenceSize - 1, conf.ActiveSize, conf.ActiveSize);
@@ -253,7 +247,6 @@ float DiffTest(std::vector<float> data, AnomalyzerConf& conf)
         // If we find a sum that is less than the initial sum across the active data,
         // this implies our initial sum might be uncharacteristically high. We increment
         // our count.
-
         if (sum(permActive) < activeSum) {
             significant++;
         }
@@ -281,10 +274,7 @@ float RankTest(std::vector<float> data, AnomalyzerConf& conf, compare comparison
 
     // Consider the sum of the ranks across the active data. This is the sum that
     // we will compare our permutations to.
-
-
     float activeSum = sum(active);
-
     int significant = 0;
 
     // Permute the active and reference data and compute the sums across the tail
@@ -299,7 +289,6 @@ float RankTest(std::vector<float> data, AnomalyzerConf& conf, compare comparison
         // our count.
 
         float permSum = sum(permActive);
-
         if (comparison(permSum, activeSum)) {
             significant++;
         }
@@ -341,14 +330,10 @@ float Ecdf(std::vector<float> x, float q)
 
 
 
-// Generates the cumulative distribution function using the difference in the means
-// for the data.
+// Generates the cumulative distribution function using the difference in the means for the data.
 float CDFTest(std::vector<float> data, AnomalyzerConf& conf)
 {
     auto diffs = Diff(data);
-    for (auto &i : diffs) {
-        i = std::abs(i);
-    }
 
     auto reference = extractReference(diffs, conf.referenceSize - 1, conf.ActiveSize, conf.ActiveSize);
     auto active = extractActive(diffs, conf.referenceSize - 1, conf.ActiveSize, conf.ActiveSize);
@@ -370,8 +355,10 @@ float CDFTest(std::vector<float> data, AnomalyzerConf& conf)
 
 
 
-// Generates the percent difference between the means of the reference and active
-// data. Returns a value scaled such that it lies between 0 and 1.
+/*
+ * Generates the percent difference between the means of the reference and active
+ * data. Returns a value scaled such that it lies between 0 and 1.
+*/
 float MagnitudeTest(std::vector<float> data, AnomalyzerConf& conf)
 {
     auto reference = extractReference(data, conf.referenceSize, conf.ActiveSize, 1);
@@ -383,8 +370,7 @@ float MagnitudeTest(std::vector<float> data, AnomalyzerConf& conf)
     float activeMean = mean(active);
     float refMean = mean(reference);
 
-    // If the baseline is 0, then the magnitude should be Inf, but we'll
-    // round to 1.
+    // If the baseline is 0, then the magnitude should be Inf, but we'll round to 1.
     if (refMean == 0) {
         if (activeMean == 0) {
             return 0;
