@@ -24,6 +24,119 @@ void printConf(AnomalyzerConf conf) {
 }
 
 
+/*
+ * Use essentially similar weights.  However, if either the magnitude
+ * or fence methods have high probabilities, upweight them significantly.
+ */
+float getWeight(Anomalyzer& anomaly, string name, float prob)
+{
+    float weight = 0.5;
+
+    std::vector<string> dynamicWeights = {"magnitude", "fence"};
+
+    /* If either the magnitude and fence methods don't have any
+       probability to contribute, we don't want to hear about it.
+       If they do, we upweight them substantially.*/
+
+    if (exists(name, dynamicWeights)) {
+        if (prob > 0.8) {
+            weight = 5.0;
+        }
+    }
+
+    return weight;
+}
+
+
+// Mean returns the mean of the vector.
+float mean(const std::vector<float>& array)
+{
+    float s = sum(array);
+    float n = (float) array.size();
+
+    return s / n;
+}
+
+
+// Variance caclulates the variance of the vector
+float variance(const std::vector<float>& data)
+{
+    float m = mean(data);
+
+    int n = data.size();
+    if (n < 2) {
+        return 0.0;
+    }
+
+    float ss = 0.0;
+
+    for (int i = 0; i < n; i++) {
+        ss += pow(data[i] - m, 2.0);
+    }
+
+    return ss / (n - 1);
+}
+
+
+// Sd calculates the standard deviation of the vector
+float sd(const std::vector<float>& array)
+{
+    return sqrt(variance(array));
+}
+
+
+/*
+ * weightedSum returns the weighted sum of the vector.  This is really only useful in
+ * calculating the weighted mean.
+ */
+float weightedSum(const std::vector<float>& probs, const std::vector<float>& weights)
+{
+    if (probs.size() != weights.size()) {
+        cout << "Length of weights unequal to vector length" << endl;
+        return NA;
+    }
+
+    float ws = 0.0;
+    int size = (int) probs.size();
+
+    for (int i = 0; i < size; i++) {
+        ws += probs[i] * weights[i];
+    }
+
+    return ws;
+}
+
+
+// WeightedMean returns the weighted mean of the vector for a given vector of weights.
+float weightedMean(std::vector<float> probs, std::vector<float> weights)
+{
+    float ws = weightedSum(probs, weights);
+    float sw = sum(weights);
+
+    // if all the weights are zero return NA
+    if (ws == NA || !isgreater(sw, 0.0)) {
+        return NA;
+    }
+
+    return ws / sw;
+}
+
+
+void update(Anomalyzer& anomaly, std::vector<float>& data)
+{
+    // add new elememnts to the vector
+    anomaly.Data.insert(anomaly.Data.end(), data.begin(), data.end());
+
+    int offset = anomaly.Data.size() - (anomaly.Conf.ActiveSize + anomaly.Conf.referenceSize);
+    if (offset < 0) {
+        offset = 0;
+    }
+
+    anomaly.Data.erase(anomaly.Data.begin(), anomaly.Data.begin() + offset);
+}
+
+
+
 void validateConf(AnomalyzerConf& conf) {
     // if supplied, make sure the detection methods are supported
     std::vector<string> supportedMethods = {"magnitude", "diff", "highrank", "lowrank", "fence", "ks", "cdf"};
@@ -106,128 +219,6 @@ Anomalyzer NewAnomalyzer(AnomalyzerConf& conf, std::vector<float> data)
 }
 
 
-void update(Anomalyzer& anomaly, std::vector<float>& data)
-{
-    // add new elememnts to the vector
-    anomaly.Data.insert(anomaly.Data.end(), data.begin(), data.end());
-
-    int offset = anomaly.Data.size() - (anomaly.Conf.ActiveSize + anomaly.Conf.referenceSize);
-    if (offset < 0) {
-        offset = 0;
-    }
-
-    anomaly.Data.erase(anomaly.Data.begin(), anomaly.Data.begin() + offset);
-}
-
-
-float push(Anomalyzer& anomaly, float data)
-{
-    // add the new point to the data
-    anomaly.Data.push_back(data);
-
-    // evaluate the anomalous probability
-    return eval(anomaly);
-}
-
-
-/*
- * Use essentially similar weights.  However, if either the magnitude
- * or fence methods have high probabilities, upweight them significantly.
- */
-float getWeight(Anomalyzer& anomaly, string name, float prob)
-{
-    float weight = 0.5;
-
-    std::vector<string> dynamicWeights = {"magnitude", "fence"};
-
-    /* If either the magnitude and fence methods don't have any
-       probability to contribute, we don't want to hear about it.
-       If they do, we upweight them substantially.*/
-
-    if (exists(name, dynamicWeights)) {
-        if (prob > 0.8) {
-            weight = 5.0;
-        }
-    }
-
-    return weight;
-}
-
-
-// Mean returns the mean of the vector.
-float mean(const std::vector<float>& array)
-{
-    float s = sum(array);
-    float n = (float) array.size();
-
-    return s / n;
-}
-
-
-// Variance caclulates the variance of the vector
-float variance(const std::vector<float>& data)
-{
-    float m = mean(data);
-
-    int n = data.size();
-    if (n < 2) {
-        return 0.0;
-    }
-
-    float ss = 0.0;
-
-	for (int i = 0; i < n; i++) {
-		ss += pow(data[i] - m, 2.0);
-	}
-
-    return ss / (n - 1);
-}
-
-
-// Sd calculates the standard deviation of the vector
-float sd(const std::vector<float>& array)
-{
-    return sqrt(variance(array));
-}
-
-
-/*
- * weightedSum returns the weighted sum of the vector.  This is really only useful in
- * calculating the weighted mean.
- */
-float weightedSum(const std::vector<float>& probs, const std::vector<float>& weights)
-{
-    if (probs.size() != weights.size()) {
-        cout << "Length of weights unequal to vector length" << endl;
-        return NA;
-    }
-
-    float ws = 0.0;
-    int size = (int) probs.size();
-
-    for (int i = 0; i < size; i++) {
-        ws += probs[i] * weights[i];
-    }
-
-    return ws;
-}
-
-
-// WeightedMean returns the weighted mean of the vector for a given vector of weights.
-float weightedMean(std::vector<float> probs, std::vector<float> weights)
-{
-    float ws = weightedSum(probs, weights);
-    float sw = sum(weights);
-
-    // if all the weights are zero return NA
-    if (ws == NA || !isgreater(sw, 0.0)) {
-        return NA;
-    }
-
-    return ws / sw;
-}
-
-
 /*
  * Return the weighted average of all statistical tests
  * for anomaly detection, which yields the probability that
@@ -280,3 +271,14 @@ float eval(Anomalyzer& anomaly)
 
     return (weighted == NA) ? 0.0 : weighted;
 }
+
+
+float push(Anomalyzer& anomaly, float data)
+{
+    // add the new point to the data
+    anomaly.Data.push_back(data);
+
+    // evaluate the anomalous probability
+    return eval(anomaly);
+}
+

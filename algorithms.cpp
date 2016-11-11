@@ -89,32 +89,6 @@ float weightExp(float num, float base)
 }
 
 
-/*
- * This function can be used to test whether or not data is getting close to a
- * specified upper or lower bound.
- */
-float FenceTest(std::vector<float> data, AnomalyzerConf& conf)
-{
-    // we don't really care about a reference window for this one
-    auto active = extractActive(data, conf.referenceSize, conf.ActiveSize, -1);
-
-    float m = mean(active);
-    float distance = 0.0;
-    if (conf.LowerBound == NA) {
-        // we only care about distance from the upper bound
-        distance = m / conf.UpperBound;
-    } else {
-        // we care about both bounds, so measure distance from midpoint
-        float bound = (conf.UpperBound - conf.LowerBound) / 2;
-        float mid = conf.LowerBound + bound;
-
-        distance = (abs(m - mid)) / bound;
-    }
-
-    return weightExp(cap(distance, 0, 1), 10);
-}
-
-
 // Diff returns a vector of length (n - 1) of the differences in the input vector
 std::vector<float> Diff(std::vector<float>& data)
 {
@@ -199,6 +173,70 @@ std::vector<float> Order(std::vector<float> data)
 
 
 /*
+ * Ecdf returns the empirical cumulative distribution function.  The ECDF function
+ * will return the percentile of a given value relative to the vector.
+ */
+float Ecdf(std::vector<float> data, float q)
+{
+    std::vector<float> y = data;
+    std::sort(y.begin(), y.end());
+
+    int n = data.size();
+
+    for (int i = 0; i < n; i++) {
+        if (q < y[i]) {
+            return i / (float) n;
+        }
+    }
+    return 1.0;
+}
+
+
+// A helper function for KS that rescales a vector to the desired length npoints.
+std::vector<float> interpolate(float min, float max, int npoints)
+{
+    std::vector<float> interp(npoints);
+    float step = (max - min) / (float) (npoints - 1);
+    interp[0] = min;
+
+    for (int i = 1; i < npoints; i++) {
+        interp[i] = interp[i - 1] + step;
+    }
+
+    return interp;
+}
+
+
+
+
+/*
+ * This function can be used to test whether or not data is getting close to a
+ * specified upper or lower bound.
+ */
+float FenceTest(std::vector<float> data, AnomalyzerConf& conf)
+{
+    // we don't really care about a reference window for this one
+    auto active = extractActive(data, conf.referenceSize, conf.ActiveSize, -1);
+
+    float m = mean(active);
+    float distance = 0.0;
+    if (conf.LowerBound == NA) {
+        // we only care about distance from the upper bound
+        distance = m / conf.UpperBound;
+    } else {
+        // we care about both bounds, so measure distance from midpoint
+        float bound = (conf.UpperBound - conf.LowerBound) / 2;
+        float mid = conf.LowerBound + bound;
+
+        distance = (abs(m - mid)) / bound;
+    }
+
+    return weightExp(cap(distance, 0, 1), 10);
+}
+
+
+
+/*
  * Generates permutations of reference and active window values to determine
  * whether or not data is anomalous. The number of permutations desired has
  * been set to 500 but can be increased for more precision.
@@ -247,7 +285,6 @@ float DiffTest(std::vector<float> data, AnomalyzerConf& conf)
     // We return the percentage of the number of iterations where we found our initial sum to be high.
     return (float) significant / (float) conf.PermCount;
 }
-
 
 
 /*
@@ -303,25 +340,6 @@ float ReverseRankTest(std::vector<float> data, AnomalyzerConf& conf)
 }
 
 
-/*
- * Ecdf returns the empirical cumulative distribution function.  The ECDF function
- * will return the percentile of a given value relative to the vector.
- */
-float Ecdf(std::vector<float> data, float q)
-{
-    std::vector<float> y = data;
-    std::sort(y.begin(), y.end());
-
-    int n = data.size();
-
-    for (int i = 0; i < n; i++) {
-        if (q < y[i]) {
-            return i / (float) n;
-        }
-    }
-    return 1.0;
-}
-
 
 // Generates the cumulative distribution function using the difference in the means for the data.
 float CDFTest(std::vector<float> data, AnomalyzerConf& conf)
@@ -370,20 +388,6 @@ float MagnitudeTest(std::vector<float> data, AnomalyzerConf& conf)
     return pdiff;
 }
 
-
-// A helper function for KS that rescales a vector to the desired length npoints.
-std::vector<float> interpolate(float min, float max, int npoints)
-{
-    std::vector<float> interp(npoints);
-    float step = (max - min) / (float) (npoints - 1);
-    interp[0] = min;
-
-    for (int i = 1; i < npoints; i++) {
-        interp[i] = interp[i - 1] + step;
-    }
-
-    return interp;
-}
 
 
 // Calculate a Kolmogorov-Smirnov test statistic.
