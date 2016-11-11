@@ -165,19 +165,20 @@ float mean(const std::vector<float>& array)
 
 
 // Variance caclulates the variance of the vector
-float variance(const std::vector<float>& x)
+float variance(const std::vector<float>& data)
 {
-    float m = mean(x);
+    float m = mean(data);
 
-    int n = x.size();
+    int n = data.size();
     if (n < 2) {
         return 0.0;
     }
 
     float ss = 0.0;
-    for (float v : x) {
-        ss += pow(v - m, 2.0);
-    }
+
+	for (int i = 0; i < n; i++) {
+		ss += pow(data[i] - m, 2.0);
+	}
 
     return ss / (n - 1);
 }

@@ -56,9 +56,9 @@ static inline bool lessThan(float x, float y)
 
 
 // Sum returns the sum of the vector.
-static inline float sum(std::vector<float> x)
+static inline float sum(std::vector<float> data)
 {
-    return std::accumulate(x.begin(), x.end(), 0.0);
+    return std::accumulate(data.begin(), data.end(), 0.0);
 }
 
 
@@ -120,7 +120,7 @@ float RankTest(std::vector<float> data, AnomalyzerConf& conf);
 float ReverseRankTest(std::vector<float> data, AnomalyzerConf& conf);
 float CDFTest(std::vector<float> data, AnomalyzerConf& conf);
 float FenceTest(std::vector<float> data, AnomalyzerConf& conf);
-std::vector<float> split(std::vector<float> x, int start, int end);
+std::vector<float> split(std::vector<float> data, int start, int end);
 
 
 float mean(const std::vector<float>& array);

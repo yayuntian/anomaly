@@ -17,7 +17,7 @@ std::unordered_map<std::string, Algorithm> Algorithms = {
 };
 
 
-std::vector<float> split(std::vector<float> x, int start, int end)
+std::vector<float> split(std::vector<float> data, int start, int end)
 {
     int n = end - start;
     if (n <= 0) {
@@ -26,7 +26,7 @@ std::vector<float> split(std::vector<float> x, int start, int end)
 
     std::vector<float> y(n);
     for (int i = 0; i < n; i++) {
-        y[i] = x[start++];
+        y[i] = data[start++];
     }
     return y;
 }
@@ -37,10 +37,10 @@ std::vector<float> split(std::vector<float> x, int start, int end)
  * Some tests require different minimum thresholds for sizes of reference windows.
  * This can be specified in the minRefSize parameter. If size isn't important, use -1
  */
-std::vector<float> extractReference(const std::vector<float>& x,
+std::vector<float> extractReference(const std::vector<float>& data,
         int refSize, int activeSize, int minRefSize)
 {
-    int n = x.size();
+    int n = data.size();
 
     activeSize = std::min(activeSize, n);
     refSize = std::min(refSize, n - activeSize);
@@ -53,15 +53,15 @@ std::vector<float> extractReference(const std::vector<float>& x,
     }
 
     // return reference windows
-    return split(x, n - activeSize - refSize, n - activeSize);
+    return split(data, n - activeSize - refSize, n - activeSize);
 
 }
 
 // same as extractReference
-std::vector<float> extractActive(const std::vector<float>& x,
+std::vector<float> extractActive(const std::vector<float>& data,
         int refSize, int activeSize, int minRefSize)
 {
-    int n = x.size();
+    int n = data.size();
 
     activeSize = std::min(activeSize, n);
     refSize = std::min(refSize, n - activeSize);
@@ -74,7 +74,7 @@ std::vector<float> extractActive(const std::vector<float>& x,
     }
 
     // return active windows
-    return split(x, n-activeSize, n);
+    return split(data, n-activeSize, n);
 }
 
 
@@ -83,9 +83,9 @@ std::vector<float> extractActive(const std::vector<float>& x,
  * smaller values are weighted more towards 0. A larger base value means a
  * more horshoe type function.
  */
-float weightExp(float x, float base)
+float weightExp(float num, float base)
 {
-    return (pow(base, x) - 1) / (base - 1);
+    return (pow(base, num) - 1) / (base - 1);
 }
 
 
@@ -98,17 +98,17 @@ float FenceTest(std::vector<float> data, AnomalyzerConf& conf)
     // we don't really care about a reference window for this one
     auto active = extractActive(data, conf.referenceSize, conf.ActiveSize, -1);
 
-    float x = mean(active);
+    float m = mean(active);
     float distance = 0.0;
     if (conf.LowerBound == NA) {
         // we only care about distance from the upper bound
-        distance = x / conf.UpperBound;
+        distance = m / conf.UpperBound;
     } else {
         // we care about both bounds, so measure distance from midpoint
         float bound = (conf.UpperBound - conf.LowerBound) / 2;
         float mid = conf.LowerBound + bound;
 
-        distance = (abs(x - mid)) / bound;
+        distance = (abs(m - mid)) / bound;
     }
 
     return weightExp(cap(distance, 0, 1), 10);
@@ -150,19 +150,19 @@ std::vector<float> RelDiff(const std::vector<float>& data)
 
 
 // Rank returns a vector of the ranked values of the input vector.
-std::vector<float> Rank(const std::vector<float>& x)
+std::vector<float> Rank(const std::vector<float>& data)
 {
-    std::vector<float> y = x;
+    std::vector<float> y = data;
     std::sort(y.begin(), y.end());
 
     // equivalent to a minimum rank (tie) method
     int rank = 0;
-    int size = x.size();
+    int size = data.size();
     std::vector<float> ranks(size, -1);
 
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
-            if (y[i] == x[j] && ranks[j] == -1) {
+            if (y[i] == data[j] && ranks[j] == -1) {
                 ranks[j] = (float) rank;
             }
 
@@ -175,9 +175,9 @@ std::vector<float> Rank(const std::vector<float>& x)
 
 
 // Order returns a vector of untied ranks of the input vector.
-std::vector<float> Order(std::vector<float> x)
+std::vector<float> Order(std::vector<float> data)
 {
-    std::vector<float> y = x;
+    std::vector<float> y = data;
     std::sort(y.begin(), y.end());
 
     int rank = 0;
@@ -186,7 +186,7 @@ std::vector<float> Order(std::vector<float> x)
 
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
-            if (y[i] == x[j] && order[j] == -1) {
+            if (y[i] == data[j] && order[j] == -1) {
                 order[j] = (float) rank;
                 rank++;
                 break;
@@ -206,8 +206,8 @@ std::vector<float> Order(std::vector<float> x)
 float DiffTest(std::vector<float> data, AnomalyzerConf& conf)
 {
     // Find the differences between neighboring elements and rank those differences.
-    auto x = RelDiff(data);
-    auto ranks = Rank(x);
+    auto rd = RelDiff(data);
+    auto ranks = Rank(rd);
 
     /*
      * The indexing runs to length-1 because after applying .Diff(), We have
@@ -230,9 +230,9 @@ float DiffTest(std::vector<float> data, AnomalyzerConf& conf)
      */
     for (int i = 0; i < conf.PermCount; i++) {
         std::random_shuffle(data.begin(), data.end());
-        auto x = RelDiff(data);
+        auto rd = RelDiff(data);
 
-        auto permRanks = Rank(x);
+        auto permRanks = Rank(rd);
         auto permActive = extractActive(permRanks, conf.referenceSize - 1, conf.ActiveSize, conf.ActiveSize);
 
         /*
@@ -307,12 +307,12 @@ float ReverseRankTest(std::vector<float> data, AnomalyzerConf& conf)
  * Ecdf returns the empirical cumulative distribution function.  The ECDF function
  * will return the percentile of a given value relative to the vector.
  */
-float Ecdf(std::vector<float> x, float q)
+float Ecdf(std::vector<float> data, float q)
 {
-    std::vector<float> y = x;
+    std::vector<float> y = data;
     std::sort(y.begin(), y.end());
 
-    int n = x.size();
+    int n = data.size();
 
     for (int i = 0; i < n; i++) {
         if (q < y[i]) {
