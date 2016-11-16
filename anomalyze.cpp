@@ -148,7 +148,7 @@ void validateConf(AnomalyzerConf& conf) {
         for (auto it : conf.Methods) {
             if (!exists(it, supportedMethods)) {
                 std::cout << "Unsupported detection method: " << it << endl;
-                exit(1);
+                exit(EXIT_FAILURE);
             }
         }
     }
@@ -166,14 +166,14 @@ void validateConf(AnomalyzerConf& conf) {
     // window sizes must be positive ints
     if (conf.ActiveSize < 1) {
         printf("Active window size must be at least of size 1\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     if (conf.referenceSize < 4) {
         printf("The combination of active window (%d) and nseasons (%d) yields"
                 " a reference window that is too small for analysis."
                 "  Please increase one or both.\n", conf.ActiveSize, conf.NSeasons);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
 
@@ -181,10 +181,10 @@ void validateConf(AnomalyzerConf& conf) {
     if (exists("fence", conf.Methods)) {
         if (conf.UpperBound == conf.LowerBound) {
             cout << "Fence test included with identical bounds on the fences" << endl;
-            exit(1);
+            exit(EXIT_FAILURE);
         } else if (conf.UpperBound < conf.LowerBound) {
             printf("UpperBound (%0.2f) was lower than the LowerBound (%0.2f)\n", conf.UpperBound, conf.LowerBound);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
     }
 
