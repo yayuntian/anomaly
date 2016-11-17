@@ -30,7 +30,7 @@ typedef struct {
 } Anomalyzer;
 
 
-typedef float (*Algorithm)(std::vector<float>, AnomalyzerConf&);
+typedef float (*Algorithm)(std::vector<float> &, AnomalyzerConf&);
 
 typedef bool (*compare)(float, float);
 
@@ -56,7 +56,7 @@ static inline bool lessThan(float x, float y)
 
 
 // Sum returns the sum of the vector.
-static inline float sum(std::vector<float> data)
+static inline float sum(const std::vector<float>& data)
 {
     return std::accumulate(data.begin(), data.end(), 0.0);
 }
@@ -113,14 +113,14 @@ static inline float cap(float x, float min, float max)
 extern std::unordered_map<std::string, Algorithm> Algorithms;
 
 
-float BootstrapKsTest(std::vector<float> data, AnomalyzerConf& conf);
-float MagnitudeTest(std::vector<float> data, AnomalyzerConf& conf);
-float DiffTest(std::vector<float> data, AnomalyzerConf& conf);
-float RankTest(std::vector<float> data, AnomalyzerConf& conf);
-float ReverseRankTest(std::vector<float> data, AnomalyzerConf& conf);
-float CDFTest(std::vector<float> data, AnomalyzerConf& conf);
-float FenceTest(std::vector<float> data, AnomalyzerConf& conf);
-std::vector<float> split(std::vector<float> data, int start, int end);
+float BootstrapKsTest(std::vector<float>& data, AnomalyzerConf& conf);
+float MagnitudeTest(std::vector<float>& data, AnomalyzerConf& conf);
+float DiffTest(std::vector<float>& data, AnomalyzerConf& conf);
+float RankTest(std::vector<float>& data, AnomalyzerConf& conf);
+float ReverseRankTest(std::vector<float>& data, AnomalyzerConf& conf);
+float CDFTest(std::vector<float>& data, AnomalyzerConf& conf);
+float FenceTest(std::vector<float>& data, AnomalyzerConf& conf);
+std::vector<float> split(const std::vector<float>& data, int start, int end);
 
 
 float mean(const std::vector<float>& array);

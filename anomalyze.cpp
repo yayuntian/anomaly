@@ -122,7 +122,7 @@ float weightedMean(std::vector<float> probs, std::vector<float> weights)
 }
 
 
-void update(Anomalyzer& anomaly, std::vector<float>& data)
+void update(Anomalyzer& anomaly, const std::vector<float>& data)
 {
     // add new elememnts to the vector
     anomaly.Data.insert(anomaly.Data.end(), data.begin(), data.end());
@@ -206,7 +206,7 @@ void validateConf(AnomalyzerConf& conf) {
 }
 
 
-Anomalyzer NewAnomalyzer(AnomalyzerConf& conf, std::vector<float> data)
+Anomalyzer NewAnomalyzer(AnomalyzerConf& conf, const std::vector<float>& data)
 {
     Anomalyzer anomaly;
 

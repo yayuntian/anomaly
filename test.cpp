@@ -14,15 +14,14 @@ float variance(const std::vector<float>& x);
 float sd(std::vector<float>& array);
 float weightedSum(std::vector<float>& probs, std::vector<float>& weights);
 float weightedMean(std::vector<float> probs, std::vector<float> weights);
-std::vector<float> extractReference(std::vector<float> data,
+std::vector<float> extractReference(const std::vector<float>& data,
         int refSize, int activeSize, int minRefSize);
-std::vector<float> extractActive(std::vector<float> data,
+std::vector<float> extractActive(const std::vector<float>& data,
         int refSize, int activeSize, int minRefSize);
 float weightExp(float x, float base);
-Anomalyzer NewAnomalyzer(AnomalyzerConf& conf, std::vector<float> data);
+Anomalyzer NewAnomalyzer(AnomalyzerConf& conf, const std::vector<float>& data);
 float eval(Anomalyzer& anomaly);
-
-std::vector<float> Rank(std::vector<float> x);
+std::vector<float> Rank(const std::vector<float>& data);
 float push(Anomalyzer& anomaly, float data);
 
 
