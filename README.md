@@ -1,11 +1,7 @@
 # anomaly
 基于时间序列的异常检测， 参照skyline、anomalyzer使用c++实现
 
-
-进一步完善中……
-
-
-具体检测信息可参照： https://github.com/lytics/anomalyzer
+参照： https://github.com/lytics/anomalyzer
 
 
 # Example
