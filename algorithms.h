@@ -49,13 +49,13 @@ public:
     float push(float f);
 
 
-    AnomalyzerConf Conf;
+    const AnomalyzerConf* Conf;
     std::vector<float> Data;
 
 };
 
 
-typedef float (*Algorithm)(const std::vector<float>&, AnomalyzerConf&);
+typedef float (*Algorithm)(const std::vector<float>&, const AnomalyzerConf&);
 typedef bool (*compare)(float, float);
 
 

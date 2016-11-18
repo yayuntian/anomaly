@@ -21,6 +21,8 @@ std::vector<float> extractActive(const std::vector<float>& data,
 float weightExp(float x, float base);
 std::vector<float> Rank(const std::vector<float>& data);
 
+std::vector<float> split(const std::vector<float>& data, int start, int end);
+
 
 void variance_test(std::vector<float>& x)
 {
@@ -49,7 +51,7 @@ int main()
     // "magnitude", "diff", "highrank", "lowrank", "fence", "ks", "cdf"
     AnomalyzerConf conf = AnomalyzerConf(5, 2, 4, {"magnitude", "diff", "highrank", "lowrank", "fence", "ks", "cdf"});
     Anomalyzer anomaly = Anomalyzer(conf, data);
-    float ret = anomaly->eval();
+    float ret = anomaly.eval();
 
     cout << "Anomalous Probability: " << ret << endl;
 
