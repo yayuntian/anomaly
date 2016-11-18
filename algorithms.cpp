@@ -2,7 +2,7 @@
 #include <ctime>
 #include <cstdlib>
 
-#include <algorithms.h>
+#include <./algorithms.h>
 
 using namespace std;
 

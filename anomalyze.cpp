@@ -6,7 +6,7 @@
 #include <queue>
 #include <set>
 
-#include <algorithms.h>
+#include <./algorithms.h>
 
 using namespace std;
 
