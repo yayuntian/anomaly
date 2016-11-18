@@ -10,25 +10,11 @@
 
 using namespace std;
 
-void printConf(AnomalyzerConf conf) {
-    cout << "Delay:" << conf.Delay << endl;
-    cout << "Sensitivity:" << conf.Sensitivity << endl;
-    cout << "UpperBound:" << conf.UpperBound << endl;
-    cout << "LowerBound:" << conf.LowerBound << endl;
-    cout << "ActiveSize:" << conf.ActiveSize << endl;
-    cout << "referenceSize:" << conf.referenceSize << endl;
-    cout << "NSeasons:" << conf.NSeasons << endl;
-    cout << "PermCount:" << conf.PermCount << endl;
-
-    printVector(conf.Methods);
-}
-
-
 /*
  * Use essentially similar weights.  However, if either the magnitude
  * or fence methods have high probabilities, upweight them significantly.
  */
-float getWeight(Anomalyzer& anomaly, string name, float prob)
+float getWeight(string name, float prob)
 {
     float weight = 0.5;
 
@@ -45,16 +31,6 @@ float getWeight(Anomalyzer& anomaly, string name, float prob)
     }
 
     return weight;
-}
-
-
-// Mean returns the mean of the vector.
-float mean(const std::vector<float>& array)
-{
-    float s = sum(array);
-    float n = (float) array.size();
-
-    return s / n;
 }
 
 
@@ -122,30 +98,50 @@ float weightedMean(std::vector<float> probs, std::vector<float> weights)
 }
 
 
-void update(Anomalyzer& anomaly, const std::vector<float>& data)
+
+
+
+AnomalyzerConf:: AnomalyzerConf(float UpperBound, int ActiveSize,
+    int NSeasons, std::vector<std::string> Methods)
 {
-    // add new elememnts to the vector
-    anomaly.Data.insert(anomaly.Data.end(), data.begin(), data.end());
+        UpperBound = UpperBound;
+        ActiveSize = ActiveSize;
+        NSeasons = NSeasons;
+        Methods = Methods;
 
-    int offset = anomaly.Data.size() - (anomaly.Conf.ActiveSize + anomaly.Conf.referenceSize);
-    if (offset < 0) {
-        offset = 0;
-    }
+        Delay = true;
+        PermCount = 500;
+        Sensitivity = 0.1;
+        LowerBound = NA;
 
-    anomaly.Data.erase(anomaly.Data.begin(), anomaly.Data.begin() + offset);
+        validateConf();
+}
+
+void AnomalyzerConf::printConf()
+{
+    cout << "Delay:" << Delay << endl;
+    cout << "Sensitivity:" << Sensitivity << endl;
+    cout << "UpperBound:" << UpperBound << endl;
+    cout << "LowerBound:" << LowerBound << endl;
+    cout << "ActiveSize:" << ActiveSize << endl;
+    cout << "referenceSize:" << referenceSize << endl;
+    cout << "NSeasons:" << NSeasons << endl;
+    cout << "PermCount:" << PermCount << endl;
+
+    printVector(Methods);
 }
 
 
-
-void validateConf(AnomalyzerConf& conf) {
+void AnomalyzerConf::validateConf()
+{
     // if supplied, make sure the detection methods are supported
     std::vector<string> supportedMethods = {"magnitude", "diff", "highrank", "lowrank", "fence", "ks", "cdf"};
     std::vector<string> minimumMethods = {"magnitude", "ks"};
 
-    if (conf.Methods.empty()) {
-        conf.Methods = minimumMethods;
+    if (Methods.empty()) {
+        Methods = minimumMethods;
     } else {
-        for (auto it : conf.Methods) {
+        for (auto it : Methods) {
             if (!exists(it, supportedMethods)) {
                 std::cout << "Unsupported detection method: " << it << endl;
                 exit(EXIT_FAILURE);
@@ -154,68 +150,71 @@ void validateConf(AnomalyzerConf& conf) {
     }
 
     // if number of seasons are not specified, default it to 4
-    if (conf.NSeasons == 0) {
-        conf.NSeasons = 4;
+    if (NSeasons == 0) {
+        NSeasons = 4;
     }
     // if delay is not specified, default to false. this means calculations
     // of anomalousness will be returned as soon as we can
 
     // make reference window some multiple of the active window size
-    conf.referenceSize = conf.NSeasons * conf.ActiveSize;
+    referenceSize = NSeasons * ActiveSize;
 
     // window sizes must be positive ints
-    if (conf.ActiveSize < 1) {
+    if (ActiveSize < 1) {
         printf("Active window size must be at least of size 1\n");
         exit(EXIT_FAILURE);
     }
 
-    if (conf.referenceSize < 4) {
+    if (referenceSize < 4) {
         printf("The combination of active window (%d) and nseasons (%d) yields"
                 " a reference window that is too small for analysis."
-                "  Please increase one or both.\n", conf.ActiveSize, conf.NSeasons);
+                "  Please increase one or both.\n", ActiveSize, NSeasons);
         exit(EXIT_FAILURE);
     }
 
 
     // validation for the fence test
-    if (exists("fence", conf.Methods)) {
-        if (conf.UpperBound == conf.LowerBound) {
+    if (exists("fence", Methods)) {
+        if (UpperBound == LowerBound) {
             cout << "Fence test included with identical bounds on the fences" << endl;
             exit(EXIT_FAILURE);
-        } else if (conf.UpperBound < conf.LowerBound) {
-            printf("UpperBound (%0.2f) was lower than the LowerBound (%0.2f)\n", conf.UpperBound, conf.LowerBound);
+        } else if (UpperBound < LowerBound) {
+            printf("UpperBound (%0.2f) was lower than the LowerBound (%0.2f)\n", UpperBound, LowerBound);
             exit(EXIT_FAILURE);
         }
     }
 
     // validation for the permutation tests
-    if (exists("highrank", conf.Methods) || exists("lowrank", conf.Methods) ||
-            exists("ks", conf.Methods) || exists("diff", conf.Methods)) {
-        if (conf.PermCount == 0) {
-            conf.PermCount = 500;
+    if (exists("highrank", Methods) || exists("lowrank", Methods) ||
+            exists("ks", Methods) || exists("diff", Methods)) {
+        if (PermCount == 0) {
+            PermCount = 500;
         }
     }
 
-    if (exists("magnitude", conf.Methods)) {
-        if (conf.Sensitivity == 0.0) {
-            conf.Sensitivity = 0.1;
+    if (exists("magnitude", Methods)) {
+        if (Sensitivity == 0.0) {
+            Sensitivity = 0.1;
         }
     }
 
-    printConf(conf);
+    this->printConf();
 }
 
 
-Anomalyzer NewAnomalyzer(AnomalyzerConf& conf, const std::vector<float>& data)
+Anomalyzer::Anomalyzer(const AnomalyzerConf& conf)
 {
-    Anomalyzer anomaly;
 
-    validateConf(conf);
+    Conf = conf;
+    Data = std::vector<float>(1000);
+}
 
-    anomaly.Conf = conf;
-    anomaly.Data = data;
 
-    return anomaly;
+Anomalyzer::Anomalyzer(const AnomalyzerConf& conf, const std::vector<float>& data)
+{
+
+    Conf = conf;
+    Data = data;
 }
 
 
@@ -224,19 +223,19 @@ Anomalyzer NewAnomalyzer(AnomalyzerConf& conf, const std::vector<float>& data)
  * for anomaly detection, which yields the probability that
  * the currently observed behavior is anomalous.
  */
-float eval(Anomalyzer& anomaly)
+float Anomalyzer::eval()
 {
-    int threshold = anomaly.Conf.referenceSize + anomaly.Conf.ActiveSize;
+    int threshold = Conf.referenceSize + Conf.ActiveSize;
 
-    if (anomaly.Conf.Delay && (int) anomaly.Data.size() < threshold) {
+    if (Conf.Delay && (int) Data.size() < threshold) {
         return 0.0;
     }
 
     std::unordered_map<std::string, float> probmap;
-    for (auto method : anomaly.Conf.Methods) {
+    for (auto method : Conf.Methods) {
         auto algorithm = Algorithms[method];
 
-        float prob = cap(algorithm(anomaly.Data, anomaly.Conf), 0, 1);
+        float prob = cap(algorithm(Data, Conf), 0, 1);
         if (prob != NA) {
             // if highrank and lowrank methods exist then only listen to the max of either
             if (method == "highrank" || method == "lowrank") {
@@ -257,12 +256,12 @@ float eval(Anomalyzer& anomaly)
         float prob = it.second;
 
         //cout << "Method: " << method << ", Prob: " << prob << endl;
-        if (method == "magnitude" && prob < anomaly.Conf.Sensitivity) {
+        if (method == "magnitude" && prob < Conf.Sensitivity) {
             return 0.0;
         }
 
         probs.push_back(prob);
-        weights.push_back(getWeight(anomaly, method, prob));
+        weights.push_back(getWeight(method, prob));
     }
 
     /* ignore the error since we force the length 
@@ -273,12 +272,11 @@ float eval(Anomalyzer& anomaly)
 }
 
 
-float push(Anomalyzer& anomaly, float data)
+float Anomalyzer::push(float f)
 {
     // add the new point to the data
-    anomaly.Data.push_back(data);
+    Data.push_back(f);
 
     // evaluate the anomalous probability
-    return eval(anomaly);
+    return eval();
 }
-

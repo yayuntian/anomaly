@@ -11,7 +11,16 @@
 // Minimum representable floating-point number.
 #define NA FLT_MIN
 
-typedef struct {
+
+class AnomalyzerConf
+{
+public:
+    AnomalyzerConf(float UpperBound, int ActiveSize, int NSeasons, std::vector<std::string> Methods);
+    ~AnomalyzerConf();
+
+    void validateConf();
+    void printConf();
+
     bool Delay;
     float Sensitivity;
     float UpperBound;
@@ -20,19 +29,46 @@ typedef struct {
     int referenceSize;
     int NSeasons;
     int PermCount;
-    std::vector<std::string> Methods;
-} AnomalyzerConf;
+    std::vector<std::string> Methods;   
+    
+};
 
 
-typedef struct {
+
+class Anomalyzer
+{
+public:
+
+    Anomalyzer(const AnomalyzerConf& conf);
+    Anomalyzer(const AnomalyzerConf& conf, const std::vector<float>& data);
+
+    ~Anomalyzer();
+
+
+    float eval();
+    float push(float f);
+
+
     AnomalyzerConf Conf;
     std::vector<float> Data;
-} Anomalyzer;
+
+};
 
 
-typedef float (*Algorithm)(std::vector<float> &, AnomalyzerConf&);
-
+typedef float (*Algorithm)(const std::vector<float>&, AnomalyzerConf&);
 typedef bool (*compare)(float, float);
+
+
+extern std::unordered_map<std::string, Algorithm> Algorithms;
+
+
+float BootstrapKsTest(const std::vector<float>& data, AnomalyzerConf& conf);
+float MagnitudeTest(const std::vector<float>& data, AnomalyzerConf& conf);
+float DiffTest(const std::vector<float>& data, AnomalyzerConf& conf);
+float RankTest(const std::vector<float>& data, AnomalyzerConf& conf);
+float ReverseRankTest(const std::vector<float>& data, AnomalyzerConf& conf);
+float CDFTest(const std::vector<float>& data, AnomalyzerConf& conf);
+float FenceTest(const std::vector<float>& data, AnomalyzerConf& conf);
 
 
 static inline bool greaterThan(float x, float y)
@@ -109,19 +145,11 @@ static inline float cap(float x, float min, float max)
     return std::max(std::min(x, max), min);
 }
 
+// Mean returns the mean of the vector.
+static inline float mean(const std::vector<float>& array)
+{
+    float s = sum(array);
+    float n = (float) array.size();
 
-extern std::unordered_map<std::string, Algorithm> Algorithms;
-
-
-float BootstrapKsTest(std::vector<float>& data, AnomalyzerConf& conf);
-float MagnitudeTest(std::vector<float>& data, AnomalyzerConf& conf);
-float DiffTest(std::vector<float>& data, AnomalyzerConf& conf);
-float RankTest(std::vector<float>& data, AnomalyzerConf& conf);
-float ReverseRankTest(std::vector<float>& data, AnomalyzerConf& conf);
-float CDFTest(std::vector<float>& data, AnomalyzerConf& conf);
-float FenceTest(std::vector<float>& data, AnomalyzerConf& conf);
-std::vector<float> split(const std::vector<float>& data, int start, int end);
-
-
-float mean(const std::vector<float>& array);
-float eval(Anomalyzer& anomaly);
+    return s / n;
+}

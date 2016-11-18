@@ -213,7 +213,7 @@ std::vector<float> interpolate(float min, float max, int npoints)
  * This function can be used to test whether or not data is getting close to a
  * specified upper or lower bound.
  */
-float FenceTest(std::vector<float>& data, AnomalyzerConf& conf)
+float FenceTest(const std::vector<float>& data, AnomalyzerConf& conf)
 {
     // we don't really care about a reference window for this one
     auto active = extractActive(data, conf.referenceSize, conf.ActiveSize, -1);
@@ -241,10 +241,11 @@ float FenceTest(std::vector<float>& data, AnomalyzerConf& conf)
  * whether or not data is anomalous. The number of permutations desired has
  * been set to 500 but can be increased for more precision.
  */
-float DiffTest(std::vector<float>& data, AnomalyzerConf& conf)
+float DiffTest(const std::vector<float>& data, AnomalyzerConf& conf)
 {
+    std::vector<float> dt = data;
     // Find the differences between neighboring elements and rank those differences.
-    auto rd = RelDiff(data);
+    auto rd = RelDiff(dt);
     auto ranks = Rank(rd);
 
     /*
@@ -267,8 +268,8 @@ float DiffTest(std::vector<float>& data, AnomalyzerConf& conf)
      * (from the length of the reference data to the full length).
      */
     for (int i = 0; i < conf.PermCount; i++) {
-        std::random_shuffle(data.begin(), data.end());
-        auto rd = RelDiff(data);
+        std::random_shuffle(dt.begin(), dt.end());
+        auto rd = RelDiff(dt);
 
         auto permRanks = Rank(rd);
         auto permActive = extractActive(permRanks, conf.referenceSize - 1, conf.ActiveSize, conf.ActiveSize);
@@ -293,10 +294,11 @@ float DiffTest(std::vector<float>& data, AnomalyzerConf& conf)
  * to 500 but can be increased for more precision. A comparison function above
  * can be specified to create Rank and ReverseRank tests.
  */
-float RankTest(std::vector<float>& data, AnomalyzerConf& conf, compare comparison)
+float RankTest(const std::vector<float>& data, AnomalyzerConf& conf, compare comparison)
 {
+    std::vector<float> dt = data;
     // Rank the elements of a vector
-    auto ranks = Rank(data);
+    auto ranks = Rank(dt);
 
     auto active = extractActive(ranks, conf.referenceSize, conf.ActiveSize, conf.ActiveSize);
     if (active.empty()) {
@@ -311,8 +313,8 @@ float RankTest(std::vector<float>& data, AnomalyzerConf& conf, compare compariso
     /* Permute the active and reference data and compute the sums across the tail
        (from the length of the reference data to the full length).*/
     for (int i = 0; i < conf.PermCount; i++) {
-        std::random_shuffle(data.begin(), data.end());
-        auto permRanks = Rank(data);
+        std::random_shuffle(dt.begin(), dt.end());
+        auto permRanks = Rank(dt);
         auto permActive = extractActive(permRanks, conf.referenceSize, conf.ActiveSize, conf.ActiveSize);
 
         /* If we find a sum that is less than the initial sum across the active data,
@@ -327,14 +329,14 @@ float RankTest(std::vector<float>& data, AnomalyzerConf& conf, compare compariso
 }
 
 // high rank
-float RankTest(std::vector<float>& data, AnomalyzerConf& conf)
+float RankTest(const std::vector<float>& data, AnomalyzerConf& conf)
 {
     return RankTest(data, conf, lessThan);
 }
 
 
 // low rank
-float ReverseRankTest(std::vector<float>& data, AnomalyzerConf& conf)
+float ReverseRankTest(const std::vector<float>& data, AnomalyzerConf& conf)
 {
     return RankTest(data, conf, greaterThan);
 }
@@ -342,7 +344,7 @@ float ReverseRankTest(std::vector<float>& data, AnomalyzerConf& conf)
 
 
 // Generates the cumulative distribution function using the difference in the means for the data.
-float CDFTest(std::vector<float>& data, AnomalyzerConf& conf)
+float CDFTest(const std::vector<float>& data, AnomalyzerConf& conf)
 {
     auto diffs = Diff(data);
 
@@ -368,7 +370,7 @@ float CDFTest(std::vector<float>& data, AnomalyzerConf& conf)
  * Generates the percent difference between the means of the reference and active
  * data. Returns a value scaled such that it lies between 0 and 1.
  */
-float MagnitudeTest(std::vector<float>& data, AnomalyzerConf& conf)
+float MagnitudeTest(const std::vector<float>& data, AnomalyzerConf& conf)
 {
     auto reference = extractReference(data, conf.referenceSize, conf.ActiveSize, 1);
     auto active = extractActive(data, conf.referenceSize, conf.ActiveSize, 1);
@@ -391,7 +393,7 @@ float MagnitudeTest(std::vector<float>& data, AnomalyzerConf& conf)
 
 
 // Calculate a Kolmogorov-Smirnov test statistic.
-float KsStat(std::vector<float>& data, AnomalyzerConf conf)
+float KsStat(const std::vector<float>& data, AnomalyzerConf conf)
 {
     auto reference = extractReference(data, conf.referenceSize, conf.ActiveSize, 1);
     auto active = extractActive(data, conf.referenceSize, conf.ActiveSize, 1);
@@ -442,8 +444,9 @@ float KsStat(std::vector<float>& data, AnomalyzerConf conf)
  * and compares that value to KS test scores obtained
  * after permuting all elements in the set.
  */
-float BootstrapKsTest(std::vector<float>& data, AnomalyzerConf& conf)
+float BootstrapKsTest(const std::vector<float>& data, AnomalyzerConf& conf)
 {
+    std::vector<float> dt = data;
     float dist = KsStat(data, conf);
     if (dist == NA) {
         return NA;
@@ -451,8 +454,8 @@ float BootstrapKsTest(std::vector<float>& data, AnomalyzerConf& conf)
 
     int significant = 0;
     for (int i = 0; i < conf.PermCount; i++) {
-        std::random_shuffle(data.begin(), data.end());
-        float permDist = KsStat(data, conf);
+        std::random_shuffle(dt.begin(), dt.end());
+        float permDist = KsStat(dt, conf);
 
         if (permDist < dist) {
             significant++;
