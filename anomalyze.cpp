@@ -102,25 +102,21 @@ float weightedMean(std::vector<float> probs, std::vector<float> weights)
 
 
 AnomalyzerConf:: AnomalyzerConf(float UpperBound, int ActiveSize,
-    int NSeasons, std::vector<std::string> Methods)
+    int NSeasons, std::vector<std::string> Methods) : UpperBound(UpperBound), ActiveSize(ActiveSize),
+        NSeasons(NSeasons), Methods(Methods)
 {
-        UpperBound = UpperBound;
-        ActiveSize = ActiveSize;
-        NSeasons = NSeasons;
-        Methods = Methods;
+    Delay = true;
+    PermCount = 500;
+    Sensitivity = 0.1;
+    LowerBound = NA;
 
-        Delay = true;
-        PermCount = 500;
-        Sensitivity = 0.1;
-        LowerBound = NA;
-
-        validateConf();
+    validateConf();
 }
 
 
 AnomalyzerConf::~AnomalyzerConf()
 {
-    
+
 }
 
 void AnomalyzerConf::printConf()
@@ -204,23 +200,20 @@ void AnomalyzerConf::validateConf()
         }
     }
 
-    this->printConf();
+    printConf();
 }
 
 
-Anomalyzer::Anomalyzer(const AnomalyzerConf& conf)
+Anomalyzer::Anomalyzer(const AnomalyzerConf& conf) : Conf(conf)
 {
 
-    Conf = &conf;
     Data = std::vector<float>(1000);
 }
 
 
-Anomalyzer::Anomalyzer(const AnomalyzerConf& conf, const std::vector<float>& data)
+Anomalyzer::Anomalyzer(const AnomalyzerConf& conf, const std::vector<float>& data) : Conf(conf), Data(data)
 {
 
-    Conf = &conf;
-    Data = data;
 }
 
 
@@ -237,17 +230,17 @@ Anomalyzer::~Anomalyzer()
  */
 float Anomalyzer::eval()
 {
-    int threshold = Conf->referenceSize + Conf->ActiveSize;
+    int threshold = Conf.referenceSize + Conf.ActiveSize;
 
-    if (Conf->Delay && (int) Data.size() < threshold) {
+    if (Conf.Delay && (int) Data.size() < threshold) {
         return 0.0;
     }
 
     std::unordered_map<std::string, float> probmap;
-    for (auto method : Conf->Methods) {
+    for (auto method : Conf.Methods) {
         auto algorithm = Algorithms[method];
 
-        float prob = cap(algorithm(Data, *Conf), 0, 1);
+        float prob = cap(algorithm(Data, Conf), 0, 1);
         if (prob != NA) {
             // if highrank and lowrank methods exist then only listen to the max of either
             if (method == "highrank" || method == "lowrank") {
@@ -268,7 +261,7 @@ float Anomalyzer::eval()
         float prob = it.second;
 
         //cout << "Method: " << method << ", Prob: " << prob << endl;
-        if (method == "magnitude" && prob < Conf->Sensitivity) {
+        if (method == "magnitude" && prob < Conf.Sensitivity) {
             return 0.0;
         }
 

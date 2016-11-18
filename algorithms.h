@@ -49,7 +49,7 @@ public:
     float push(float f);
 
 
-    const AnomalyzerConf* Conf;
+    const AnomalyzerConf Conf;
     std::vector<float> Data;
 
 };
@@ -62,13 +62,13 @@ typedef bool (*compare)(float, float);
 extern std::unordered_map<std::string, Algorithm> Algorithms;
 
 
-float BootstrapKsTest(const std::vector<float>& data, AnomalyzerConf& conf);
-float MagnitudeTest(const std::vector<float>& data, AnomalyzerConf& conf);
-float DiffTest(const std::vector<float>& data, AnomalyzerConf& conf);
-float RankTest(const std::vector<float>& data, AnomalyzerConf& conf);
-float ReverseRankTest(const std::vector<float>& data, AnomalyzerConf& conf);
-float CDFTest(const std::vector<float>& data, AnomalyzerConf& conf);
-float FenceTest(const std::vector<float>& data, AnomalyzerConf& conf);
+float BootstrapKsTest(const std::vector<float>& data, const AnomalyzerConf& conf);
+float MagnitudeTest(const std::vector<float>& data, const AnomalyzerConf& conf);
+float DiffTest(const std::vector<float>& data, const AnomalyzerConf& conf);
+float RankTest(const std::vector<float>& data, const AnomalyzerConf& conf);
+float ReverseRankTest(const std::vector<float>& data, const AnomalyzerConf& conf);
+float CDFTest(const std::vector<float>& data, const AnomalyzerConf& conf);
+float FenceTest(const std::vector<float>& data, const AnomalyzerConf& conf);
 
 
 static inline bool greaterThan(float x, float y)

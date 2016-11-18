@@ -213,7 +213,7 @@ std::vector<float> interpolate(float min, float max, int npoints)
  * This function can be used to test whether or not data is getting close to a
  * specified upper or lower bound.
  */
-float FenceTest(const std::vector<float>& data, AnomalyzerConf& conf)
+float FenceTest(const std::vector<float>& data, const AnomalyzerConf& conf)
 {
     // we don't really care about a reference window for this one
     auto active = extractActive(data, conf.referenceSize, conf.ActiveSize, -1);
@@ -241,7 +241,7 @@ float FenceTest(const std::vector<float>& data, AnomalyzerConf& conf)
  * whether or not data is anomalous. The number of permutations desired has
  * been set to 500 but can be increased for more precision.
  */
-float DiffTest(const std::vector<float>& data, AnomalyzerConf& conf)
+float DiffTest(const std::vector<float>& data, const AnomalyzerConf& conf)
 {
     std::vector<float> dt = data;
     // Find the differences between neighboring elements and rank those differences.
@@ -294,7 +294,7 @@ float DiffTest(const std::vector<float>& data, AnomalyzerConf& conf)
  * to 500 but can be increased for more precision. A comparison function above
  * can be specified to create Rank and ReverseRank tests.
  */
-float RankTest(const std::vector<float>& data, AnomalyzerConf& conf, compare comparison)
+float RankTest(const std::vector<float>& data, const AnomalyzerConf& conf, compare comparison)
 {
     std::vector<float> dt = data;
     // Rank the elements of a vector
@@ -329,14 +329,14 @@ float RankTest(const std::vector<float>& data, AnomalyzerConf& conf, compare com
 }
 
 // high rank
-float RankTest(const std::vector<float>& data, AnomalyzerConf& conf)
+float RankTest(const std::vector<float>& data, const AnomalyzerConf& conf)
 {
     return RankTest(data, conf, lessThan);
 }
 
 
 // low rank
-float ReverseRankTest(const std::vector<float>& data, AnomalyzerConf& conf)
+float ReverseRankTest(const std::vector<float>& data, const AnomalyzerConf& conf)
 {
     return RankTest(data, conf, greaterThan);
 }
@@ -344,7 +344,7 @@ float ReverseRankTest(const std::vector<float>& data, AnomalyzerConf& conf)
 
 
 // Generates the cumulative distribution function using the difference in the means for the data.
-float CDFTest(const std::vector<float>& data, AnomalyzerConf& conf)
+float CDFTest(const std::vector<float>& data, const AnomalyzerConf& conf)
 {
     auto diffs = Diff(data);
 
@@ -370,7 +370,7 @@ float CDFTest(const std::vector<float>& data, AnomalyzerConf& conf)
  * Generates the percent difference between the means of the reference and active
  * data. Returns a value scaled such that it lies between 0 and 1.
  */
-float MagnitudeTest(const std::vector<float>& data, AnomalyzerConf& conf)
+float MagnitudeTest(const std::vector<float>& data, const AnomalyzerConf& conf)
 {
     auto reference = extractReference(data, conf.referenceSize, conf.ActiveSize, 1);
     auto active = extractActive(data, conf.referenceSize, conf.ActiveSize, 1);
@@ -393,7 +393,7 @@ float MagnitudeTest(const std::vector<float>& data, AnomalyzerConf& conf)
 
 
 // Calculate a Kolmogorov-Smirnov test statistic.
-float KsStat(const std::vector<float>& data, AnomalyzerConf conf)
+float KsStat(const std::vector<float>& data, const AnomalyzerConf& conf)
 {
     auto reference = extractReference(data, conf.referenceSize, conf.ActiveSize, 1);
     auto active = extractActive(data, conf.referenceSize, conf.ActiveSize, 1);
@@ -444,7 +444,7 @@ float KsStat(const std::vector<float>& data, AnomalyzerConf conf)
  * and compares that value to KS test scores obtained
  * after permuting all elements in the set.
  */
-float BootstrapKsTest(const std::vector<float>& data, AnomalyzerConf& conf)
+float BootstrapKsTest(const std::vector<float>& data, const AnomalyzerConf& conf)
 {
     std::vector<float> dt = data;
     float dist = KsStat(data, conf);
